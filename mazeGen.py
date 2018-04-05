@@ -86,7 +86,7 @@ def mazeGen(xMax, yMax):
             createRoom(x,y,[0,0,[]],xMax,yMax)
          elif x == 0:
             pRoom = getRoom(0, y-1)
-            if "n" in pRoom[2]:
+            if pRoom and "n" in pRoom[2]:
                createRoom(x,y,pRoom,xMax,yMax)
          else:
             pRoom = getRoom(x-1,y)
