@@ -1,5 +1,5 @@
 import random
-from Hero import *
+#from Hero import *
 from copy import copy
 from termcolor import colored,cprint
 #     namn, armour, level to use
@@ -52,6 +52,7 @@ class Hero:
    def __init__(self, name, plClass):
       self.level = 0
       self.name = name
+      self.position = [0,0]
       self.pclass = plClass
       self.hp = self.heroGetHP(plClass)
       self.hpMax = self.heroGetHP(plClass)
@@ -86,7 +87,7 @@ class Hero:
    def Attack(self,armour,block,monst):
       print(self.name + " attackerar " + monst.mtype + "!")
       hitRand = random.random()
-      if hitRand < self.accuracy/100:
+      if hitRand < (self.accuracy - armour)/100:
          blockRand = random.random()
          if blockRand < block:
             cprint("Attacken blockas!","red")
@@ -103,7 +104,8 @@ class Hero:
 
    def levelUp(self,monstXp):
       l = self.level
-      xp = self.xp + monstXp
+      self.xp = self.xp + monstXp
+      xp = self.xp
       newLev = 0
       for lev in levelLimits:
           if xp < lev:
@@ -113,9 +115,10 @@ class Hero:
       dLev = newLev - l
       if dLev > 0:
          cprint("Du har nått level " + str(newLev) + "!", "cyan") 
-         self.hpMax = self.hp + dLev*5
+         self.hpMax = self.hpMax + dLev*5
          self.hp = self.hp + dLev*5
          self.accuracy = self.accuracy + dLev*5
+         self.level = newLev
 
    def applyPoison(self):
       if self.poisoned:
@@ -126,6 +129,7 @@ class Hero:
             self.poisonDamage = 0
          else: 
             self.hp = self.hp - self.poisonDamage
+            self.poisonedTurn = self.poisonedTurn + 1
    def heroGetHP(self, pclass):
       if pclass == "Barbar":
          return 25
@@ -141,19 +145,40 @@ class Hero:
       if len(numberStr) == 0:
          cprint("Ange ett nummer!", "red")
          return
-      number = int(numberStr)
+      try:
+         number = int(numberStr)
+      except ValueError:
+         cprint("Ange ett nummer!", "red")
+         return
       if not number < len(loot):
          cprint("Numret finns inte! Prova igen.","red")
          return
       el = loot[number]
       room.deleteLoot(el)
-      self.inventory.append(el)
+      added = False
+      if type(el) == Gold:
+         for i in self.inventory:
+            if type(i) == Gold:
+               i.count = i.count + el.count
+               added = True
+         if not added:
+            self.inventory.append(el)
+      else:
+         if len(self.inventory) == 7:
+            cprint("Du kan inte bära på fler än 7 saker.","red")
+            return
+         else:
+            self.inventory.append(el)
 
    def dropItem(self,numberStr,room):
       if len(numberStr) == 0:
          cprint("Ange ett nummer!", "red")
          return
-      number = int(numberStr)
+      try:
+         number = int(numberStr)
+      except ValueError:
+         cprint("Ange ett nummer!", "red")
+         return
       if not number < len(self.inventory):
          cprint("Numret finns inte! Prova igen.","red")
          return
@@ -165,7 +190,11 @@ class Hero:
       if len(numberStr) == 0:
          cprint("Ange ett nummer!", "red")
          return
-      number = int(numberStr)
+      try:
+         number = int(numberStr)
+      except ValueError:
+         cprint("Ange ett nummer!", "red")
+         return
       if not number < len(self.inventory):
          cprint("Numret finns inte! Prova igen.","red")
          return
@@ -204,8 +233,12 @@ class Hero:
 
    def pr(self):
       nextLev = 0
+      goldPr = 0
+      for i in self.inventory:
+         if type(i) == Gold:
+            goldPr = i.count
       if self.offHand:
-         shPrint = self.offhand.pr()
+         shPrint = self.offHand.pr()
       else:
          shPrint = "Ingen sköld"
       for lev in levelLimits:
@@ -214,7 +247,7 @@ class Hero:
             break
 
       cprint("=========================","green")
-      cprint("Namn: " + self.name + "\nKlass: " + self.pclass + "\nLevel: " + str(self.level) + "\nXP: " + str(self.xp) + "    Nästa level: " + str(nextLev) + "\nHP: " + str(self.hp) + "/" + str(self.hpMax) + "\nVapen: " + self.mainHand.pr() + "\nRustning: " + self.body.pr() + "\nSköld: " + shPrint,"green")
+      cprint("Namn: " + self.name + "\nKlass: " + self.pclass + "\nLevel: " + str(self.level) + "\nXP: " + str(self.xp) + "    Nästa level: " + str(nextLev) + "\nHP: " + str(self.hp) + "/" + str(self.hpMax) + "\nVapen: " + self.mainHand.pr() + "\nRustning: " + self.body.pr() + "\nSköld: " + shPrint + "\nGuld: " + str(goldPr),"green")
       if self.poisoned:
          cprint("Du är förgiftad!", "red")
       cprint("=========================","green")
@@ -231,7 +264,11 @@ class Hero:
       if len(numberStr) == 0:
          cprint("Ange ett nummer!", "red")
          return
-      number = int(numberStr)
+      try:
+         number = int(numberStr)
+      except ValueError:
+         cprint("Ange ett nummer!", "red")
+         return
       if not number < len(self.inventory):
          cprint("Numret finns inte! Prova igen.","red")
          return
@@ -252,12 +289,15 @@ class Hero:
       if len(numberStr) == 0:
          cprint("Ange ett nummer!", "red")
          return
-      number = int(numberStr)
+      try:
+         number = int(numberStr)
+      except ValueError:
+         cprint("Ange ett nummer!", "red")
+         return
       if not number < len(self.inventory):
          cprint("Numret finns inte! Prova igen.","red")
          return
       el = self.inventory[number]
-      print(el)
       if not issubclass(type(el),Shield):   
          cprint("Du har inte valt en sköld! Prova igen.","red")
       elif self.level < el.levelToUse:   
@@ -272,6 +312,12 @@ class Hero:
    def useItem(self,numberStr):
       if len(numberStr) == 0:
          cprint("Ange ett nummer!", "red")
+
+      try:
+         number = int(numberStr)
+      except ValueError:
+         cprint("Ange ett nummer!", "red")
+         return
       if not number < len(self.inventory):
          cprint("Numret finns inte! Prova igen.","red")
          return
@@ -281,7 +327,7 @@ class Hero:
          return
       if type(el) == HealthPotion:
          hpAdd = el.hpHeal
-         self.hp = max(self.hpMax, self.hp + hpAdd)
+         self.hp = min(self.hpMax, self.hp + hpAdd)
          cprint("Du har återfått " + str(hpAdd) + " HP!","cyan")
          self.inventory.remove(el)
       elif type(el) == Antidote:
@@ -303,6 +349,7 @@ class Room:
          self.looseTreasure = []
       self.exits = self.createExits(dir)
       self.loot = []
+      self.hasStairs = False
       self.monsters = self.createMonster(hero.level)
       print("Du står i ett rum.")
       if randLoose < 0.2:
@@ -313,6 +360,16 @@ class Room:
     
    def printExits(self):
       print("Det finns utgångar till " + str(self.exits) + ".") 
+
+   def printMonsters(self):
+      cprint("===========================","green")
+      for monst in self.monsters:
+         printString = "Namn: " + monst.mtype + "\nHP: " + str(monst.hp) + "\nRustning: " + str(monst.armour) +  "\n" 
+         if monst.dead:
+            cprint(printString,"red")
+         else:
+            cprint(printString,"green")
+      cprint("===========================","green")
       
    def createExits(self,dir):
       possExits = ["n", "e", "s", "w"]
@@ -584,16 +641,18 @@ class SmallAxe(SharpWeapon):
    def __init__(self, level):
       SharpWeapon.__init__(self,level,"Liten Yxa", 3)
    def getDamage(self,level):
+      dLev = min(level,5)
       randDam = random.uniform(0.7,1.3)
-      dam = 3*(level+1)*randDam + 3 
+      dam = 3*(dLev+1)*randDam + 3 
       return dam
 
 class ShortSword(SharpWeapon):
    def __init__(self, level):
       SharpWeapon.__init__(self,level,"Kortsvärd", 1)
    def getDamage(self,level):
+      dLev = min(level,5)
       randDam = random.uniform(0.8,1.2)
-      dam = 3*(level+1)*randDam + 1 
+      dam = 3*(dLev+1)*randDam + 1 
       return dam
 
 class TwoHandSword(SharpWeapon):
@@ -601,8 +660,9 @@ class TwoHandSword(SharpWeapon):
       SharpWeapon.__init__(self,level,"Tvåhandssvärd", 5)
       self.twoHand = True
    def getDamage(self,level):
+      dLev = min(level,5)
       randDam = random.uniform(0.8,1.2)
-      dam = 6*(level+1)*randDam + 2 
+      dam = 6*(dlev+1)*randDam + 2 
       return dam
 
 class Maul(BluntWeapon):
@@ -610,24 +670,27 @@ class Maul(BluntWeapon):
       BluntWeapon.__init__(self,level,"Slägga", 7)
       self.twoHand = True
    def getDamage(self,level):
+      dLev = min(level,5)
       randDam = random.uniform(0.4,1.6)
-      dam = 8*(level+1)*randDam + 4 
+      dam = 8*(dlev+1)*randDam + 4 
       return dam
 
 class SmallClub(BluntWeapon):
    def __init__(self, level):
       BluntWeapon.__init__(self,level,"Liten klubba", 0)
    def getDamage(self,level):
+      dLev = min(level,5)
       randDam = random.uniform(0.6,1.4)
-      dam = 4*(level+1)*randDam + 1 
+      dam = 4*(dLev+1)*randDam + 1 
       return dam
 
 class MorningStar(BluntWeapon):
    def __init__(self, level):
       BluntWeapon.__init__(self,level,"Morgonstjärna", 5)
    def getDamage(self,level):
+      dLev = min(level,5)
       randDam = random.uniform(0.5,1.5)
-      dam = 4*(level+1)*randDam + 5 
+      dam = 3.5*(dLev+1)*randDam + 5 
       return dam
 
 
@@ -636,7 +699,11 @@ class Monster:
    def __init__(self, level):
       self.level = level
       self.dead = False
+      self.looted = False
+      self.startRoaming = False
+      self.block = 0
       self.mtype = self.getMonsterType(level)
+      self.armour = self.getMonsterArmour(level)
       self.weaknesses = self.getWeaknesses(level, self.mtype)
       self.abilities = self.getMonsterAbilities(level, self.mtype)
       self.hp = self.getHP(level, self.mtype)
@@ -649,6 +716,28 @@ class Monster:
       extXP = len(abilities)* level
       return baseXP+extXP
 
+   def getMonsterArmour(self,level): 
+      typ = self.mtype
+      randD = random.uniform(0.8,1.2)
+      if typ == "Råttan":
+         dmg = randD*(level+1)*2 
+      elif typ == "Huggormen": 
+         dmg = randD*(level+1)*2 + 3 
+      elif typ == "Mördarsnigeln": 
+         dmg = randD*(level+1)*3 + 10 
+      elif typ == "Påskharen": 
+         dmg = randD*(level+1)*1 
+      elif typ == "Jättebävern": 
+         dmg = randD*(level+1)*2  + 2 
+      elif typ == "Jätteeldmyran": 
+         dmg = randD*(level+1)*1  + 2 
+      elif typ == "Frostörn": 
+         dmg = randD*(level+1)*2  + 5 
+      else:
+         dmg = 4
+      return round(dmg)
+
+
    def getMonsterDamage(self,level,typ): 
       randD = random.uniform(0.8,1.2)
       if typ == "Råttan":
@@ -656,9 +745,15 @@ class Monster:
       elif typ == "Huggormen": 
          dmg = randD*(level+1)*2 
       elif typ == "Mördarsnigeln": 
-         dmg = randD*(level+1)*1 
+         dmg = randD*(level+1)*1 + 1 
       elif typ == "Påskharen": 
          dmg = randD*(level+1)*1 
+      elif typ == "Jättebävern": 
+         dmg = randD*(level+1)*1.5 + 3 
+      elif typ == "Jätteeldmyran": 
+         dmg = randD*(level+1)*1.1 + 1 
+      elif typ == "Frostörn": 
+         dmg = randD*(level+1)*2.5 + 1 
       else:
          dmg = 4
       return round(dmg)
@@ -666,13 +761,19 @@ class Monster:
    def getHP(self,level,typ):
       randD = random.uniform(0.8,1.2)
       if typ == "Råttan":
-         hp = randD*(level+1)*10 + 1
+         hp = randD*(level+1)*6 + 10
       elif typ == "Huggormen": 
-         hp = randD*(level+1)*6 
+         hp = randD*(level+1)*4 + 10 
       elif typ == "Mördarsnigeln": 
-         hp = randD*(level+1)*20 
+         hp = randD*(level+1)*10  + 20
       elif typ == "Påskharen": 
          hp = randD*(level+1)*20 
+      elif typ == "Jättebävern": 
+         hp = randD*(level+1)*7.5 
+      elif typ == "Jätteeldmyran": 
+         hp = randD*(level+1)*5
+      elif typ == "Frostörn": 
+         hp = randD*(level+1)*6 + 5
       else:
          hp = 4
       return round(hp)
@@ -680,13 +781,19 @@ class Monster:
    def getAccuracy(self,level,typ):
       randD = random.uniform(0.8,1.2)
       if typ == "Råttan":
-         hp = randD*(level+1)*8 + 5
+         hp = randD*(level+1)*5 + 20
       elif typ == "Huggormen": 
-         hp = randD*(level+1)*4 + 20
+         hp = randD*(level+1)*6 + 30
       elif typ == "Mördarsnigeln": 
-         hp = randD*(level+1)*1 + 10
+         hp = randD*(level+1)*1 + 20
       elif typ == "Påskharen": 
-         hp = randD*(level+1)*1 + 10
+         hp = randD*(level+1)*1 + 20
+      elif typ == "Jättebävern": 
+         hp = randD*(level+1)*5 + 20
+      elif typ == "Jätteeldmyran": 
+         hp = randD*(level+1)*5 + 20
+      elif typ == "Jätteeldmyran": 
+         hp = randD*(level+1)*4 + 20
       else:
          hp = 4
       return round(hp)
@@ -718,7 +825,7 @@ class Monster:
       retLoot = []
       if self.mtype == "Påskharen":
          return [EasterEgg(1)]
-      if level < 5:
+      if level < 10:
          randMisc = random.random()
          if randMisc < 0.6:
             retLoot.append(Gold(level))
@@ -762,8 +869,6 @@ class Monster:
       if level < 3:
          rand = random.randint(0,2)
          return ["Råttan", "Huggormen", "Mördarsnigeln"][rand]
-      elif level < 5:
-         return "Påskharen"
       elif level < 6:
          rand = random.randint(0,2)
          return ["Jättebävern", "Jätteeldmyran", "Frostörnen"][rand]
@@ -789,7 +894,7 @@ class Monster:
                hero.poisonDamage = abExtra[1]
                cprint("Du har blivit förgiftad!","green")
       hitRand = random.random()
-      if hitRand < self.accuracy/100:
+      if hitRand < (self.accuracy - armour)/100:
          blockRand = random.random()
          if blockRand < block:
             cprint("Attacken blockas!","cyan")
@@ -810,9 +915,17 @@ class Monster:
 
    def getMonsterAbilities(self,level,typ):
       if typ == "Råttan":
-         return [["Huggbett", 0.33, ["extraDamage", 5+ (level)/2]]]
+         return [["Huggbett", 0.25, ["extraDamage", 5 + level/2]]]
       elif typ == "Huggormen": 
-          return [["Gift", 0.50, ["poison", 1 + level]]]
+          return [["Gift", 0.40, ["poison", 1 + level]]]
+      elif typ == "Mördarsnigeln": 
+          return [["Slembett", 0.10, ["extraDamage", 10 + level]]]
+      elif typ == "Jättebävern": 
+          return [["Svansdunk", 0.25, ["extraDamage", 6 + level + 2]]]
+      elif typ == "Jätteeldmyran": 
+          return [["Eldspott", 0.3, ["eld", 7 + level/2]], ["Giftbett", 0.3, ["poison", 3]]]
+      elif typ == "Frostörn": 
+          return [["Frysande klor", 0.4, ["köld", level*2]]]
       else:
          return []
 
@@ -820,10 +933,6 @@ class Monster:
       print("Monster of type " + str(self.mtype) + " with abilities " + str(self.abilities) + " with " + str(self.hp) + " HPs and " + str(self.accuracy) + " accuracy")
 
 
-arm = SmallClub(1)
-print(arm)
-print(type(arm))
-print(issubclass(type(arm),Weapon))
 cprint("======================================================","cyan")
 print("Välkommen! Kan du hitta den gröna diamanten nere i grottorna?")
 heroName = input("Ge oss ditt namn, hjälte:")
@@ -845,7 +954,8 @@ while not hero.dead:
    if monsters: 
       if not hero.dead:
          monstToAttack = room.showMonsters()
-         hero.Attack(monstToAttack.getArmour(),monstToAttack.getBlock(),monstToAttack)
+         if not monstToAttack.dead:
+            hero.Attack(monstToAttack.armour,monstToAttack.block, monstToAttack)
       for monster in monsters:
          if not monster.dead:
             monster.monsterAttack(hero.getArmour(),hero.getBlock(),hero)
@@ -854,10 +964,11 @@ while not hero.dead:
    
    if monsters: 
       for monster in monsters:
-         if monster.dead:
+         if monster.dead and not monster.looted:
             hero.levelUp(monster.xp)
             room.loot = monster.createLoot(hero.level)
-            room.removeMonster(monster)
+            monster.looted = True
+#            room.removeMonster(monster)
    if firstTime:
       nextRoom = False
    firstTime = False
@@ -867,9 +978,15 @@ while not hero.dead:
          exit(0)
       if hero.dead == True:
          cprint("Du har tyvärr dött! Prova gärna igen.","red")
+         totGold = 0
+         for i in hero.inventory:
+            if type(i) == Gold:
+               totGold = i.count
+         cprint("Du samlade ihop totalt " + str(totGold) + " guld. Bra jobbat!","green")
+         
          exit(0)
       room.printExits()
-      inp = input("\nSkriv w/e/n/s för att gå i motsvarande riktning.\nc för att fortsätta strida.\nh för att se hjältens egenskaper\ni för att se vad hjälten bär.\na för att använda ett föremål\nf för att se vad som finns på golvet att plocka upp.\nd för att släppa ett föremål.\np för att ta upp ett föremål.\nv för att välja ett vapen.\nr för att välja rustning.\nk för att välja sköld.")
+      inp = input("\nSkriv w/e/n/s för att gå i motsvarande riktning.\nc för att fortsätta strida.\nh för att se hjältens egenskaper\ni för att se vad hjälten bär.\na för att använda ett föremål\nf för att se vad som finns på golvet att plocka upp.\nd för att släppa ett föremål.\np för att ta upp ett föremål.\nv för att välja ett vapen.\nr för att välja rustning.\nk för att välja sköld.\nm för att se monstrens egenskaper.")
       if inp == "w" or inp == "e" or inp == "s" or inp == "n":
          if not inp in room.exits:
             print("Det går inte att gå ditåt")
@@ -883,6 +1000,8 @@ while not hero.dead:
          hero.pr()
       elif inp == "f": 
          room.showLoot()
+      elif inp == "m": 
+         room.printMonsters()
       elif inp == "d":
          inpNr = input("Ge numret på föremålet.")
          hero.dropItem(inpNr, room)
